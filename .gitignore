@@ -1,0 +1,6 @@
+__pycache__/
+venv/
+
+sample/
+data/*.db
+test*
