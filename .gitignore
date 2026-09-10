@@ -1,6 +1,9 @@
-__pycache__/
-venv/
+caquot/__pycache__/
+.venv/
 
-sample/
 data/*.db
-test*
+sample/
+
+tests/
+docs/architecture/
+docs/futur.md

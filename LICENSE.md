@@ -2,6 +2,10 @@
 
 <https://polyformproject.org/licenses/noncommercial/1.0.0>
 
++--------------------------------+
+| Copyright (c) 2026 - Paul MURY |
++--------------------------------+
+
 ## Acceptance
 
 In order to get any license under these terms, you must agree

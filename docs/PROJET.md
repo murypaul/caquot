@@ -1,7 +1,9 @@
 # Caquot - Logiciel d'indexation d'image patrimoniale par intelligence artificielle.
 
-=== ARCHIVE === Ce document est gardé à titre d'archivage des premières
-décisions et pistes du projet.
++-------------------------ARCHIVE-------------------------+
+| Ce document est gardé à titre d'archivage des premières |
+| décisions et pistes du projet.                          |
++---------------------------------------------------------+
 
 ---
 
