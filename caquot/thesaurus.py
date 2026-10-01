@@ -6,18 +6,21 @@ from tkinter import filedialog
 
 def load_thesaurus(connection, cursor):
     print("""+---------------------------+
-| CHARGEMENT D'UN THESAURUS |
+| Chargement d'un thésaurus |
 +---------------------------+\n""")
     print("|  /!\\ FORMAT ACTUELLEMENT ACCEPTE :")
     print(f"|  {'{:<10} {:<10} {:<10} {:<10} {:<10}'.format('ID', 'LABEL', 'PARENT_ID', 'PATH', 'NOTES')}\n")
 
-    print("CHEMIN DU THESAURUS : ")
+    print("Chemin du thésaurus : ")
     thesaurus_path = filedialog.askopenfilename()
-    thesaurus_name = input("NOM DU THESAURUS : ")
+    if not thesaurus_path:
+        print("Aucun fichier sélectionné\nRetour...\n")
+        return
+    thesaurus_name = input("Nom du thésaurus : ")
     print("\n----------------------------------------\n")
 
     # Insertion des lignes du csv dans une variable 'thesaurus'
-    print(f"RECUPERATION DE '{thesaurus_name}'...")
+    print(f"Récupération de '{thesaurus_name}'...")
 
     thesaurus = []
     with open(thesaurus_path, encoding="utf-8") as file:
@@ -26,7 +29,7 @@ def load_thesaurus(connection, cursor):
             thesaurus.append(row)
     
 
-    print(f"\nVERIFIER LE THESAURUS SELECTIONNE. CONFIRMER ? (O/N)")
+    print(f"\nVérifier le thésaurus sélectionné. Confirmer ? (O/N)")
     
     # Création dynamique du tableau
     keys = ["id", "label", "parent_id", "path", "notes"]
@@ -57,13 +60,13 @@ def load_thesaurus(connection, cursor):
     while True:
         good_thesaurus = input("CAQUOT> ")
         if good_thesaurus.lower() in ["yes", "y", "oui", "o"]:
-            print("INSCRIPTION DU THESAURUS EN BASE...")
+            print("Inscription du thésaurus en base...")
             break
         elif good_thesaurus.lower() in ["no", "n", "non"]:
-            print("ANNULATION...")
+            print("Annulation...")
             return
         else:
-            print("ENTREE INVALIDE. SAISIR 'O' ou 'N'.")
+            print("Entrée invalide. Saisir 'O' ou 'N'.")
 
     # Ecriture de 'thesaurus' dans l'insertion SQLite
     for row in thesaurus:
@@ -80,12 +83,12 @@ def load_thesaurus(connection, cursor):
         (thesaurus_name,)
     )
     resultats = cursor.fetchall()
-    print(f"\nENREGISTREMENT TERMINE : {len(resultats)} TERMES AJOUTES EN BASE.\n")
+    print(f"\nEnregistrement terminé : {len(resultats)} termes ajoutés en base.\n")
     
 
 def list_thesaurus(connection, cursor):
     print("""+--------------------+
-| LISTE DES THESAURI |
+| Liste des thésauri |
 +--------------------+\n""")
 
     # Sélection des données de la table THESAURUS
@@ -160,7 +163,7 @@ def delete_thesaurus(connection, cursor):
         }
         list_data.append(data_dict)
     if len(grouped_data) == 0:
-        print("AUCUN THESAURUS ENREGISTRE\nANNULATION...\n")
+        print("Aucun thésaurus enregistré\nAnnulation...\n")
         return
     while True:
         print(f"THESAURUS A SUPPRIMER\n----------------------------------------\n")
@@ -170,10 +173,14 @@ def delete_thesaurus(connection, cursor):
                 "i": index,
                 "thesaurus_name": row["thesaurus_name"]
             }
-            print(f"   {index}. {row["thesaurus_name"]} ({row["thesaurus_sum"]} TERMES)")
+            print(f"   {index}. {row["thesaurus_name"]} ({row["thesaurus_sum"]} termes)")
             thesaurus_list.append(thesaurus_list_dict)   
         print("\n----------------------------------------")
-        thesaurus_to_delete_int = int(input("CAQUOT> "))
+        user_input = input("CAQUOT> ")
+        try:
+            thesaurus_to_delete_int = int(user_input)
+        except ValueError:
+            thesaurus_to_delete_int = None
 
         thesaurus_found = False
         for row in thesaurus_list:
@@ -181,28 +188,30 @@ def delete_thesaurus(connection, cursor):
                 thesaurus_to_delete = row["thesaurus_name"]
                 thesaurus_found = True
                 break
+        if user_input.lower() in ['retour', 'quitter', 'cancel', 'quit']:
+            return
         else:
-            print("/!\\ ENTREE INVALIDE. REESAYER.\n")
+            print("/!\\ Entrée invalide. Veuillez réessayer.\n")
         if thesaurus_found:
             break
 
     while True:
         print(f"""----------------------------------------
 
-THESAURUS SELECTIONNE : '{thesaurus_to_delete}'
-CONFIRMER LA SUPPRESSION ? (O/N)
-LE THESAURUS ET TOUTES LES DONNEES ASSOCIEES SERONT SUPPRIMES.
+Thésaurus sélectionné : '{thesaurus_to_delete}'
+Confirmer la suppression ? (O/N)
+Le thésaurus et toutes les données associées seront supprimés.
 
 ----------------------------------------""")
         delete_this_thesaurus = input("CAQUOT> ")
         if delete_this_thesaurus.lower() in ["yes", "y", "oui", "o"]:
-            print("SUPPRESSION...\n")
+            print("Suppression...\n")
             break
         elif delete_this_thesaurus.lower() in ["no", "n", "non"]:
-            print("ANNULATION...\n")
+            print("Annulation...\n")
             return
         else:
-            print("/!\\ ENTREE INVALIDE. SAISIR 'O' ou 'N'.\n")
+            print("/!\\ Entrée invalide. Saisir 'O' ou 'N'.\n")
 
     cursor.execute("""
         DELETE
@@ -212,7 +221,7 @@ LE THESAURUS ET TOUTES LES DONNEES ASSOCIEES SERONT SUPPRIMES.
         (thesaurus_to_delete,)
     )
 
-    print(f"THESAURUS '{thesaurus_to_delete}' ET DONNEES ASSOCIEES SUPPRIMES.\n")
+    print(f"Thésaurus '{thesaurus_to_delete}' et données associées supprimés.\n")
 
 
 def select_thesaurus(connection, cursor):
@@ -226,9 +235,9 @@ def select_thesaurus(connection, cursor):
     # Retourne 'thesaurus = None' si pas de données
     if not results:
         thesaurus = None
-        print("""AUCUN THESAURUS ENREGISTRE EN BASE.
-VEUILLEZ INTEGRER UN THESAURUS PUIS REESSAYER.
-RETOUR...""")
+        print("""Aucun thésaurus en base.
+Veuillez suivre la procédure pour en intégrer un et réessayez.
+Retour...""")
         return thesaurus
 
     # Mise en forme des données
@@ -260,6 +269,12 @@ RETOUR...""")
         thesaurus_list.append(thesaurus_list_dict)
     print("\n----------------------------------------")
 
+    if len(thesaurus_list) == 1: # Si un seul thésaurus disponible alors sélection de celui-ci
+        print("Un seul thésaurus enregistré")
+        print(f"Thésaurus sélectionné '{thesaurus_list[0]["thesaurus_name"]}'\n")
+        thesaurus = thesaurus_list[0]["thesaurus_name"]
+        return thesaurus
+
     while True:
         user_input = input("CAQUOT> ")
         try:
@@ -272,11 +287,11 @@ RETOUR...""")
         for row in thesaurus_list:
             if row["i"] == selected_thesaurus_int:
                 thesaurus = row["thesaurus_name"]
-                print(f"THESAURUS SELECTIONNE : '{thesaurus}'\n")
+                print(f"Thésaurus sélectionné : '{thesaurus}'\n")
                 thesaurus_found = True
                 break
         else:
-            print("/!\\ ENTREE INVALIDE. REESSAYER.\n")
+            print("/!\\ Entrée invalide. Veuillez réessayer.\n")
         if thesaurus_found:
             break
 

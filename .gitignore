@@ -1,8 +1,12 @@
 caquot/__pycache__/
+nlp/__pycache__/
 .venv/
+Caquot.egg-info/
 
-data/*.db
-sample/
+data/
+sample/export/
+sample/images/
+sample/thesaurus/th-periode.csv
 
 tests/
 docs/architecture/

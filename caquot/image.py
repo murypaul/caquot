@@ -3,14 +3,16 @@ from . import db
 
 def delete_images(connection, cursor):
     print("""+------------------------+
-    | SUPPRESSION DES IMAGES |
-    +------------------------+\n""")
+| Suppression des images |
++------------------------+\n""")
 
     while True:
         print("""----------------------------------------
 
- [1] SUPPRIMER LES IMAGES DEJA EXPORTEES (TOUS MODELES)
- [2] SUPPRIMER TOUTES LES IMAGES EN BASE
+ [1] Supprimer les images déjà exportées (tous modèles confondus)
+ [2] Supprimer toutes les images en base
+
+ [0] Retour
 
 ----------------------------------------
 """)
@@ -47,8 +49,11 @@ def delete_images(connection, cursor):
             
             break
 
+        elif response == "0":
+            return
+
         else:
-            print("/!\\ ENTREE INVALIDE. REESSAYER.")
+            print("/!\\ Entrée invalide. Veuillez réessayer.")
 
     for image_to_delete in images_to_delete:
         cursor.execute("""
@@ -59,4 +64,4 @@ def delete_images(connection, cursor):
         (image_to_delete,)
         )
 
-    print(f"{len(images_to_delete)} IMAGES SUPPRIMEES DE LA BASE")
+    print(f"{len(images_to_delete)} images supprimées de la base.")

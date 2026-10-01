@@ -14,6 +14,7 @@ if [ ! -d ".venv" ]; then
     python3 -m venv .venv
     .venv/bin/pip install --quiet --upgrade pip
     .venv/bin/pip install -r requirements.txt
+    pip install -e .
 fi
 
 .venv/bin/python -m caquot.main

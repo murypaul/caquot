@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+## [1.1.0] - 2026-10-01
+
+### Added
+- [Experimental] Added two Natural Language Processing scripts in `nlp/nlp.py.`
+They allow searching through your images (text/image) or thesaurus (text/text)
+using natural language.
+
+### Changed
+- The `confidence_level` field has been renamed `cosinus_similarity`, which is
+more accurate.
+- Several inputs have been fixed to prevent crashes caused by invalid input.
+- Better and stronger way to download and delete a model. Now the data of a
+model lives in `data/models`.
+- Improvement of the data model for the `IMAGE` table in preparation for future
+updates.
+- Documentation update.
+- UI redesign.
+
+
 ## [1.0.0] - 2026-09-10
 
 Completion of the project's initial scope.
@@ -17,8 +36,8 @@ Separation of actions into dedicated modules and code refactoring.
 New way to launch the project using `run.sh`/`run.bat`.
 
 ### Added
-- `run.sh`/`run.bat`: new entry point for launching CAQUOT, with automatic creation and
-setup of the virtual environment.
+- `run.sh`/`run.bat`: new entry point for launching CAQUOT, with automatic
+creation and setup of the virtual environment.
 - `main.py`: a new main menu providing access to the different modules.
 - `thesaurus.py`: dedicated functions for importing, listing, deleting, and
 selecting thesauri.

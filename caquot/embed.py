@@ -1,9 +1,10 @@
-from . import db
 import csv
 import open_clip
 import torch
 import sqlite3
 import os
+
+from . import db
 from . import thesaurus
 from . import model
 from tkinter import filedialog
@@ -12,27 +13,29 @@ from PIL import Image
 
 def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
     print("""+---------------------------+
-| VECTORISATION 'THESAURUS' |
+| Vectorisation 'THESAURUS' |
 +---------------------------+\n""")
     
     # Sélection thésaurus/modèle
     thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
-    model_name = model.select_model(connection, cursor)
+    model_dict = model.select_model(connection, cursor)
 
     if thesaurus_name == None:
+        print("Annulation...\n")
         return
 
-    if model_name == None:
+    if model_dict == None:
+        print("Annulation...\n")
         return
 
     # Chargement du modèle
-    print("CHARGEMENT DU MODELE OPENCLIP...")
+    print("Chargement du modèle OpenCLIP...")
     clip_model, preprocess, tokenizer, device, model_name, model_id = model.model_loading(
-        connection, cursor, model_name
+        connection, cursor, model_dict
     )
 
     # Récupération des termes du thésaurus et insertion dans un dictionnaire
-    print("RECUPERATION DU THESAURUS...")
+    print("Récupération du thésaurus...")
     cursor.execute(
         """SELECT thesaurus_name, thesaurus_id, name, note, path
         FROM THESAURUS
@@ -57,17 +60,17 @@ def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
 
 
     # Vectorisation des termes
-    print("VECTORISATION...")
+    print("Vectorisation...")
     total_thesaurus_to_tokenize = len(thesaurus_to_tokenize)
     for index, term in enumerate(thesaurus_to_tokenize, start=1):
         # Vectorisation
-        text_to_tokenize = tokenizer([term["text"]]).to(device) # Vectorisation uniquement du texte mis en forme, jamais de l'identifiant
+        text_to_tokenize = tokenizer([term["text"]]).to(device) # Vectorisation uniquement du texte mis en forme
 
         with torch.no_grad():
             tokenized_text = clip_model.encode_text(text_to_tokenize)
         
-        vecteur_numpy_text = tokenized_text.cpu().numpy()[0]
-        blobed_tokenized_text = db.vector_to_blob(vecteur_numpy_text)
+        vector_numpy_text = tokenized_text.cpu().numpy()[0]
+        blobed_tokenized_text = db.vector_to_blob(vector_numpy_text)
 
         cursor.execute(
             "INSERT OR REPLACE INTO THESAURUS_VECTORS (thesaurus_id, vectors, clip_model_id) VALUES (?, ?, ?)",
@@ -93,23 +96,27 @@ def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
         (thesaurus_name, model_id)
     )
     total_thesaurus_vectors = cursor.fetchone()["total"]
-    print(f"{total_thesaurus_vectors} TERMES VECTORISES\n")
+    print(f"{total_thesaurus_vectors} termes vectorisés\n")
 
 
 def image_embedding(connection, cursor): # Vectorisation des images
     print("""+-----------------------+
-| VECTORISATION 'IMAGE' |
+| Vectorisation 'IMAGE' |
 +-----------------------+\n""")
 
     while True:
         print("""----------------------------------------
         
- [1] TRAITER UN NOUVEAU LOT
- [2] TRAITER LES IMAGES EN BASE
+ [1] Traiter un nouveau lot
+ [2] Traiter les images en base
 
 ----------------------------------------
         """)
-        scope_int = int(input("CAQUOT> "))
+        user_input = input("CAQUOT> ")
+        try:
+            scope_int = int(user_input)
+        except ValueError:
+            scope_int = None
 
         if scope_int == 1: # Nouveau lot d'images
 
@@ -117,46 +124,51 @@ def image_embedding(connection, cursor): # Vectorisation des images
             print("""
 | /!\\ CONSIDERATIONS TECHNIQUES :
 | 
-|FORMATS ACCEPTES : JPG / JPEG / PNG
+|Formats acceptés : '.jpg' / '.jpeg' / '.png'
 |
-| CHEMIN DE L'IMAGE UNIQUEMENT ENREGISTRE EN BASE.
-| LE FICHIER ORIGINAL N'EST PAS COPIE.
+| Seul le chemin de l'image est enregistré en base.
+| Le fichier original n'est pas copié.
             """)
             images_path_input = filedialog.askdirectory(mustexist=True, title='Répertoire des images')
             if not images_path_input:
-                print("ANNULATION...\n")
+                print("Annulation...\n")
                 return
-            else:
-                images_path = f"{images_path_input}/"
             
             # Liste des fichiers images et création d'une liste
-            print("RECUPERATION DES IMAGES...")
+            print("Récupération des images...")
 
-            images_list = os.listdir(images_path)
+            files_list = os.listdir(images_path_input)
 
-            images = []
-            for image in images_list:
-                image_path = f"{images_path}{image}"
-                images.append(image_path)
+            files = [] # Liste des fichiers
+            for file in files_list:
+                file_path = os.path.join(images_path_input, file)
+
+                if not os.path.isfile(file_path):
+                    continue
+
+                files.append(file_path)
             
-            print(f"DOSSIER : {len(images)} FICHIERS")
+            print(f"Dossier : {len(files)} fichiers")
 
-            # Enregistrement des liens des images dans la base de données
+            # Enregistrement des liens et noms des images dans la base de données
             images_to_tokenize = []
-            for file in images:
+            for file in files: # Liste des images
                 if not file.endswith(('.jpg', '.png', '.jpeg')):
                     continue
 
+                image_no_path = os.path.basename(file)
+                image_name, _ = os.path.splitext(image_no_path)
+
                 cursor.execute(
-                    "INSERT OR REPLACE INTO IMAGE (name) VALUES (?)",
-                    (file,)
+                    "INSERT OR REPLACE INTO IMAGE (path, name) VALUES (?, ?)",
+                    (file, image_name)
                 )
 
                 image_id = cursor.lastrowid
 
                 images_to_tokenize_dict = {
                     "image_id": image_id,
-                    "image_name": file
+                    "image_path": file
                 }
             
                 images_to_tokenize.append(images_to_tokenize_dict)
@@ -164,7 +176,7 @@ def image_embedding(connection, cursor): # Vectorisation des images
             break
         
         elif scope_int == 2: # Toutes les images de la base
-            print("RECUPERATION DES IMAGES...")
+            print("Récupération des images...")
 
             # Récupération des images
             cursor.execute(
@@ -176,7 +188,7 @@ def image_embedding(connection, cursor): # Vectorisation des images
             images_to_tokenize = []
             unprocessed_images = []
             for image in images_in_db:
-                image_path = image["name"]
+                image_path = image["path"]
                 
                 if not os.path.exists(image_path):
                     unprocessed_images.append(image_path)
@@ -184,59 +196,59 @@ def image_embedding(connection, cursor): # Vectorisation des images
 
                 images_to_tokenize_dict = {
                     "image_id": image["image_id"],
-                    "image_name": image_path
+                    "image_path": image_path
                 }
 
                 images_to_tokenize.append(images_to_tokenize_dict)
 
             if not images_to_tokenize:
-                print("AUCUNE IMAGE EN BASE\nANNULATION...")
+                print("Aucune image en base\nAnnulation...")
                 break
 
-            print(f"{len(images_to_tokenize)} IMAGES RECUPERES")
+            print(f"{len(images_to_tokenize)} images récupérées")
 
             if unprocessed_images: # Références mortes dans la base
                 while True:
-                    print(f"{len(unprocessed_images)} IMAGES N'EXISTENT PLUS SUR LE DISQUE.\nLES SUPPRIMER DE LA BASE ? (O/N)")
+                    print(f"{len(unprocessed_images)} images n'existent plus sur le disque.\nLes supprimer de la base ? (O/N)")
                     purge = input("CAQUOT> ")
 
                     if purge.lower() in ['yes', 'y', 'o', 'oui']: # Purge des références mortes
-                        for image_name in unprocessed_images:
+                        for image_path in unprocessed_images:
                             cursor.execute("""
                                 DELETE
                                 FROM IMAGE
-                                WHERE name = ?
+                                WHERE path = ?
                                 """,
-                                (image_name,)
+                                (image_path,)
                             )
-                        print("REFERENCES MORTES PURGEES DE LA BASE.\n")
+                        print("Références mortes purgées de la base.\n")
                         break
                     
                     elif purge.lower() in ['no', 'n', 'non']:
                         break
 
                     else:
-                        print("/!\\ ENTREE INVALIDE. SAISIR 'O' ou 'N'.\n")
+                        print("/!\\ Entrée invalide. Saisir 'O' ou 'N'.\n")
 
             break
         
 
         else:
-            print("/!\\ ENTREE INVALIDE. REESSAYER.")
+            print("/!\\ Entrée invalide. Veuillez réessayer.")
 
-    model_name = model.select_model(connection, cursor)
-    if model_name == None:
+    model_dict = model.select_model(connection, cursor)
+    if model_dict == None:
         return
 
     # Chargement du modèle
-    model_to_use, preprocess, tokenizer, device, model_name, model_id = model.model_loading(connection, cursor, model_name)
+    model_to_use, preprocess, tokenizer, device, model_name, model_id = model.model_loading(connection, cursor, model_dict)
     
     # Vectorisation des images
-    print(f"VECTORISATION...")
+    print(f"Vectorisation...")
     
     total_images_to_tokenize = len(images_to_tokenize)
     for index, file in enumerate(images_to_tokenize, start=1):
-        image = Image.open(file["image_name"])
+        image = Image.open(file["image_path"])
         preprocessed_image = preprocess(image).unsqueeze(0).to(device)
 
         with torch.no_grad():
@@ -271,13 +283,13 @@ def image_embedding(connection, cursor): # Vectorisation des images
             FROM IMAGE
             JOIN IMAGE_VECTORS
                 ON IMAGE.image_id = IMAGE_VECTORS.image_id
-            WHERE IMAGE_VECTORS.clip_model_id = ? AND IMAGE.name = ?
+            WHERE IMAGE_VECTORS.clip_model_id = ? AND IMAGE.path = ?
             """,
-            (model_id, row["image_name"])
+            (model_id, row["image_path"])
         )
         result = cursor.fetchone()
 
         if result:
             total += 1
     
-    print(f"{total} IMAGES VECTORISEES")
+    print(f"{total} images vectorisées\n")

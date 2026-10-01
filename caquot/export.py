@@ -9,13 +9,16 @@ from datetime import datetime
 
 
 def export (connection, cursor):
-    print("""+---------+
+    print("""+--------+
 | Export |
 +--------+\n""")
 
     # Chemin d'export du fichier
-    print("DOSSIER D'EXPORT")
+    print("Dossier d'export")
     export_path_input = filedialog.askdirectory(mustexist=True, title='Dossier d''export')
+    if not export_path_input:
+        print("Annulation...\n")
+        return
     export_path = os.path.abspath(os.path.expanduser(export_path_input))
     now = datetime.now()
     time = now.strftime("%y%m%d_%H%M")
@@ -23,7 +26,7 @@ def export (connection, cursor):
 
 
     while True: # Récupération et jointure des données
-        print("EXPORTER LES DONNEES D'UN MODELE OU D'UN THESAURUS PARTICULIER ? (O/N)")
+        print("Voulez-vous exporter les données d'un modèle ou d'un thésaurus particulier ? (O/N)")
         response = input("CAQUOT> ")
 
         if response.lower() in ['yes', 'y', 'oui', 'o']: # Récupération selon modèle/thésaurus
@@ -31,7 +34,7 @@ def export (connection, cursor):
             model_name = model.select_model(connection, cursor)
 
             cursor.execute("""
-                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.confidence_level AS confidence_level, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
+                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
                 FROM IMAGE_THESAURUS
                 JOIN IMAGE
                     ON IMAGE_THESAURUS.image_id = IMAGE.image_id
@@ -50,7 +53,7 @@ def export (connection, cursor):
 
         elif response.lower() in ['no', 'n', 'non']: # Récupération de toutes les données
             cursor.execute("""
-                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.confidence_level AS confidence_level, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
+                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
                 FROM IMAGE_THESAURUS
                 JOIN IMAGE
                     ON IMAGE_THESAURUS.image_id = IMAGE.image_id
@@ -65,11 +68,11 @@ def export (connection, cursor):
             break
 
         else:
-            print("/!\\ ENTREE INVALIDE. SAISIR 'O' ou 'N'.\n")
+            print("/!\\ Entrée invalide. Saisir 'O' ou 'N'.\n")
 
 
     # Mise en forme des données
-    print("FORMATAGE DES DONNEES...")
+    print("Formatage des données...")
 
     only_images_name = [] # Récupération du nom des images dans une liste à part
     for row in results:
@@ -78,15 +81,15 @@ def export (connection, cursor):
     data = []
     for row in results:
         # Mise en forme du nom de l'image sur le modèle du numéro d'inventaire Musée de France "[année].[lot].[bien](.[sous-inventaire])"
-        image_without_path = os.path.basename(row["image_name"]) # Retire le chemin du nom de l'image
-        image_without_extension = os.path.splitext(image_without_path) # Retire l'extension
-        image_without_last_part = image_without_extension[0].removesuffix("-POS") # Retire le suffixe
-        image_final_name = image_without_last_part.replace("_", ".") # Remplace les '_' par des '.'
+        #image_without_path = os.path.basename(row["image_name"]) # Retire le chemin du nom de l'image #TOVERIFY
+        #image_without_extension = os.path.splitext(image_without_path) # Retire l'extension #TOVERIFY
+        image_without_suffix = row["image_name"].removesuffix("-POS") # Retire le suffixe s'il y en a un
+        image_final_name = image_without_suffix.replace("_", ".") # Remplace les '_' par des '.'
 
         data_dict = {
             "accession_number": image_final_name,
             "thesaurus_id": row["thesaurus_id"],
-            "confidence_level": f"{row['confidence_level']:.3f}", # Modifier ':.4f' pour changer le nombre de chiffres après la virgule
+            "cosinus_similarity": f"{row['cosinus_similarity']:.3f}", # Modifier ':.4f' pour changer le nombre de chiffres après la virgule
             "model_name": row["clip_model_name"]
         }
 
@@ -97,21 +100,21 @@ def export (connection, cursor):
     for row in data:
         accession_number = row["accession_number"]
         if accession_number not in grouped_data:
-            grouped_data[accession_number] = {"thesaurus_id" : [], "confidence_level": [], "model_name": []}
+            grouped_data[accession_number] = {"thesaurus_id" : [], "cosinus_similarity": [], "model_name": []}
         grouped_data[accession_number]["thesaurus_id"].append(row["thesaurus_id"])
-        grouped_data[accession_number]["confidence_level"].append(row["confidence_level"])
+        grouped_data[accession_number]["cosinus_similarity"].append(row["cosinus_similarity"])
         grouped_data[accession_number]["model_name"].append(row["model_name"])
 
     grouped_data_in_row = [] # Une seule ligne porduite par numéro d'inventaire
     for accession_number, values in grouped_data.items():
         thesaurus_str = ";".join(values["thesaurus_id"])
-        confidence_str = ";".join(values["confidence_level"])
+        similarity_str = ";".join(values["cosinus_similarity"])
         model_str = ";".join(values["model_name"])
 
         row = {
             "accession_number": accession_number,
             "thesaurus_id": thesaurus_str,
-            "confidence_level": confidence_str,
+            "cosinus_similarity": similarity_str,
             "model_name": model_str,
         }
 
@@ -119,14 +122,14 @@ def export (connection, cursor):
 
     
     # Production du csv
-    print("ECRITURE DU FICHIER CSV...\n")
+    print("Ecriture du fichier CSV...\n")
 
     with open (file_export_name, "w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=["accession_number", "thesaurus_id", "confidence_level", "model_name"])
+        writer = csv.DictWriter(file, fieldnames=["accession_number", "thesaurus_id", "cosinus_similarity", "model_name"])
         writer.writeheader()
         writer.writerows(grouped_data_in_row)
 
-    print(f"FICHIER ECRIT : ({file_export_name})")
+    print(f"Fichier écrit : ({file_export_name})\n")
 
 
     # Changement de la valeur 'exported' sur la table IMAGE_THESAURUS

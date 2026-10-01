@@ -36,7 +36,9 @@ def init_schema(connection):
     connection.execute("""
         CREATE TABLE IF NOT EXISTS IMAGE (
             image_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
+            path TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            idno VARCHAR(255)
         )
     """)
     connection.execute("""
@@ -44,7 +46,8 @@ def init_schema(connection):
             clip_model_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name VARCHAR(255) NOT NULL,
             architecture VARCHAR(255) NOT NULL,
-            pretrained_data VARCHAR(255) NOT NULL
+            pretrained_data VARCHAR(255) NOT NULL,
+            weights_path VARCHAR(255)
         )
     """)
     connection.execute("""
@@ -75,7 +78,8 @@ def init_schema(connection):
             image_id INTEGER NOT NULL,
             thesaurus_id VARCHAR(255) NOT NULL,
             clip_model_id INTEGER NOT NULL,
-            confidence_level FLOAT NOT NULL,
+            cosinus_similarity FLOAT NOT NULL,
+            confidence_level FLOAT,
             exported VARCHAR(32) NOT NULL DEFAULT 'FALSE'
                 CHECK (exported IN ('FALSE', 'TRUE')),
             FOREIGN KEY (image_id) REFERENCES IMAGE(image_id) ON DELETE CASCADE,

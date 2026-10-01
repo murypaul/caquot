@@ -5,6 +5,7 @@
 | décisions et pistes du projet.                          |
 +---------------------------------------------------------+
 
+PROJET
 ---
 
 ## Finalité

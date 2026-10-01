@@ -10,7 +10,7 @@ def similarity(candidate):
 
 def alignement(connection, cursor):
     print("""+-----------------------------+
-| RAPPROCHEMENTS DES VECTEURS |
+| Rapprochement des vecteurs |
 +-----------------------------+\n""")
 
     # Sélection du thésaurus / modèle
@@ -39,7 +39,7 @@ def alignement(connection, cursor):
             "clip_model_id": row["clip_model_id"]
         }
         images_vectors.append(images_vectors_dict)
-    print(f"{len(images_vectors)} VECTEURS 'IMAGES' RECUPERES")
+    print(f"{len(images_vectors)} vecteurs 'IMAGES' récupérés")
 
     # Récupération des vecteurs 'thesaurus'
     cursor.execute("""
@@ -65,7 +65,7 @@ def alignement(connection, cursor):
             "clip_model_id": row["clip_model_id"]
         }
         thesaurus_vectors.append(thesaurus_vectors_dict)
-    print(f"{len(thesaurus_vectors)} VECTEURS 'THESAURUS' RECUPERES")
+    print(f"{len(thesaurus_vectors)} vecteurs 'THESAURUS' récupérés")
 
 
     # Rapprochement vecteurs
@@ -89,16 +89,16 @@ def alignement(connection, cursor):
         results_images.sort(key=similarity, reverse=True)
         best_candidates.extend(results_images[:10]) # Augmenter/diminuer le nombre de candidats ici
 
-    print(f"\nENREGISTREMENT DES CANDIDATS...")
+    print(f"\nEnregistrement des candidats...")
 
 
     # Insertion des meilleurs candidats en base
     i = 0
     for candidate in best_candidates:
         cursor.execute(
-            "INSERT OR REPLACE INTO IMAGE_THESAURUS (image_id, thesaurus_id, clip_model_id, confidence_level) VALUES (?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO IMAGE_THESAURUS (image_id, thesaurus_id, clip_model_id, cosinus_similarity) VALUES (?, ?, ?, ?)",
             (candidate["image_id"], candidate["thesaurus_id"], candidate["clip_model_id"], float(candidate["similarity"]))
         )
         i = i+1
 
-    print(f"{i} RAPPROCHEMENTS ENREGISTRES")
+    print(f"{i} Rapprochements enregistrés\n")

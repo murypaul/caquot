@@ -7,6 +7,8 @@ from . import alignment
 from . import export
 from . import image
 
+from nlp import nlp
+
 
 # Initialisation
 def clear_screen(): # Nettoyer la console
@@ -14,9 +16,18 @@ def clear_screen(): # Nettoyer la console
 
 
 clear_screen()
-print("""+------------------------------------------+
-| CAQUOT - INDEXATION AUTOMATISEE D'IMAGES |
-+------------------------------------------+\n""")
+print(r"""+ =========================================== +
+|        ____                        _        |
+|      / ___|__ _  __ _ _   _  ___ | |_       |
+|     | |   / _` |/ _` | | | |/ _ \| __|      |
+|     | |__| (_| | (_| | |_| | (_) | |_       |
+|      \____\__,_|\__, |\__,_|\___/ \__|      |
+|                    |_|                      |
+|                                             |
+| Programme d'indexation automatisée d'images |
++ =========================================== +""")
+
+print("\n")
 
 # Définition des menus
 def main_menu(): # Menu principal
@@ -24,12 +35,13 @@ def main_menu(): # Menu principal
         print("""MENU PRINCIPAL
 ----------------------------------------
 
- [1] GERER LES THESAURI
- [2] GERER LES MODELES OPENCLIP
- [3] VECTORISATION
- [4] RAPPROCHEMENT / EXPORT
+ [1] Gérer les thésauri
+ [2] Gérer les modèles OpenCLIP
+ [3] Vectorisation
+ [4] Rapprochement / Export
+ [5] Recherche en langage naturel (EXPERIMENTAL)
     
- [0] QUITTER
+ [0] Quitter
  
 ----------------------------------------""")
         menu = input("CAQUOT> ")
@@ -50,24 +62,28 @@ def main_menu(): # Menu principal
             clear_screen()
             alignment_and_export()
 
+        elif menu == "5":
+            clear_screen()          
+            natural_language_processing_menu()
+
         elif menu == "0":
-            print("\nAU REVOIR !\n****************************************\n")
+            print("\nAu revoir !\n****************************************\n")
             break # Casse la boucle while et ferme propremennt le programme
         else:
             clear_screen()
 
-            print("OPTION INVALIDE. VEUILLEZ RECOMMENCER.")
+            print("Option invalide. Veuillez recommencer.")
 
 def manage_thesauri(): # Menu de gestion des thésauri
     while True:
         print("""GERER LES THESAURI
 ----------------------------------------
 
- [1] CHARGER
- [2] SUPPRIMER
- [3] LISTER
+ [1] Charger
+ [2] Supprimer
+ [3] Lister
         
- [0] RETOUR
+ [0] Retour
  
 ----------------------------------------""")
         menu = input("CAQUOT> ")
@@ -105,18 +121,18 @@ def manage_thesauri(): # Menu de gestion des thésauri
         else:
             clear_screen()
             
-            print("OPTION INVALIDE. VEUILLEZ RECOMMENCER.")
+            print("Option invalide. Veuillez recommencer.")
 
 def manage_models(): # Menu de gestion des modèles openCLIP
     while True:
         print("""GERER LES MODELES OPENCLIP
 ----------------------------------------
 
- [1] CHARGER
- [2] SUPPRIMER
- [3] LISTER
+ [1] Charger
+ [2] Supprimer
+ [3] Lister
         
- [0] RETOUR
+ [0] Retour
  
 ----------------------------------------""")
         menu = input("CAQUOT> ")
@@ -157,17 +173,17 @@ def manage_models(): # Menu de gestion des modèles openCLIP
         else:
             clear_screen()
             
-            print("OPTION INVALIDE. VEUILLEZ RECOMMENCER.")
+            print("Option invalide. Veuillez recommencer.")
 
 def embedding_menu(): # Menu de vectorisation
     while True:
         print("""VECTORISER
 ----------------------------------------
 
- [1] VECTORISER LES THESAURI
- [2] VECTORISER DES IMAGES
+ [1] Vectoriser les thesauri
+ [2] Vectoriser des images
         
- [0] RETOUR
+ [0] Retour
  
 ----------------------------------------""")
         menu = input("CAQUOT> ")
@@ -199,7 +215,7 @@ def embedding_menu(): # Menu de vectorisation
         else:
             clear_screen()
             
-            print("OPTION INVALIDE. VEUILLEZ RECOMMENCER.")
+            print("Option invalide. Veuillez recommencer.")
 
 
 def alignment_and_export(): # Menu de rapprochement et d'export
@@ -207,11 +223,11 @@ def alignment_and_export(): # Menu de rapprochement et d'export
         print("""RAPPROCHEMENT / EXPORT
 ----------------------------------------
 
- [1] RAPPROCHEMENT
- [2] EXPORTER
- [3] SUPPRIMER LES IMAGES
+ [1] Rapprochement
+ [2] Exporter
+ [3] Supprimer les images
         
- [0] RETOUR
+ [0] Retour
 
 ----------------------------------------""")
         menu = input("CAQUOT> ")
@@ -252,7 +268,57 @@ def alignment_and_export(): # Menu de rapprochement et d'export
         else:
             clear_screen()
             
-            print("OPTION INVALIDE. VEUILLEZ RECOMMENCER.")
+            print("Option invalide. Veuillez recommencer.")
+
+
+def natural_language_processing_menu(): # Menu de gestion de le recherche en langage naturel
+    while True:
+        print("""RECHERCHE EN LANGAGE NATUREL
+----------------------------------------
+
+ [1] Image / Texte
+ [2] Texte / Texte
+ [3] Image / Image [EN COURS DE DEVELOPPEMENT]
+        
+ [0] Retour
+ 
+----------------------------------------""")
+        menu = input("CAQUOT> ")
+
+        if menu == "1":
+            clear_screen()
+
+            connection, cursor = db.get_connection()
+            
+            nlp.nlp_image_text(connection, cursor)
+
+            db.release_connection(connection)
+
+
+        elif menu == "2":
+            clear_screen()
+
+            connection, cursor = db.get_connection()
+
+            nlp.nlp_text_text(connection, cursor)
+            
+            db.release_connection(connection)
+
+
+        elif menu == "3":
+            clear_screen()
+
+            print("Indisponible actuellement\nDéveloppement en cours...")
+
+
+        elif menu == "0":
+            clear_screen()
+            
+            break
+        else:
+            clear_screen()
+            
+            print("Option invalide. Veuillez recommencer.")
 
 
 main_menu()
