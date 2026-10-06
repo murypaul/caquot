@@ -25,11 +25,11 @@ def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
     thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
     model_dict = model.select_model(connection, cursor)
 
-    if thesaurus_name == None:
+    if thesaurus_name is None:
         print("Annulation...\n")
         return
 
-    if model_dict == None:
+    if model_dict is None:
         print("Annulation...\n")
         return
 
@@ -182,7 +182,7 @@ def image_embedding(connection, cursor): # Vectorisation des images
             print("/!\\ Entrée invalide. Veuillez réessayer.")
 
     model_dict = model.select_model(connection, cursor)
-    if model_dict == None:
+    if model_dict is None:
         return
 
     # Chargement du modèle

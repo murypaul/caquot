@@ -31,7 +31,13 @@ def export (connection, cursor):
 
         if response.lower() in ['yes', 'y', 'oui', 'o']: # Récupération selon modèle/thésaurus
             thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
-            model_name = model.select_model(connection, cursor)
+            if thesaurus_name is None:
+                print("Annulation...\n")
+                return
+            model_dict = model.select_model(connection, cursor)
+            if model_dict is None:
+                print("Annulation...\n")
+                return
 
             cursor.execute("""
                 SELECT IMAGE.name AS image_name, COALESCE(IMAGE.idno, IMAGE.name) AS accession_number, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
@@ -44,7 +50,7 @@ def export (connection, cursor):
                     ON IMAGE_THESAURUS.clip_model_id = CLIP_MODEL.clip_model_id
                 WHERE THESAURUS.thesaurus_name = ? AND CLIP_MODEL.clip_model_id = ?
                 """,
-                (thesaurus_name, model_name["model_id"])
+                (thesaurus_name, model_dict["model_id"])
             )
             results = cursor.fetchall()
 

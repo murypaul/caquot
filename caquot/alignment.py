@@ -15,7 +15,13 @@ def alignement(connection, cursor):
 
     # Sélection du thésaurus / modèle
     thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
+    if thesaurus_name is None:
+        print("Annulation...\n")
+        return
     model_dict = model.select_model(connection, cursor)
+    if model_dict is None:
+        print("Annulation...\n")
+        return
     
     # Récupération des vecteurs images
     cursor.execute("""
