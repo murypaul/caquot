@@ -369,7 +369,8 @@ def pick_device(): # Vérifie si le GPU est utilisable
     print("Calcul sur le processeur (plus lent).")
     if torch.__version__.endswith("+cpu") and shutil.which("nvidia-smi"):
         print("| Une carte NVIDIA est présente, mais la version de PyTorch installée")
-        print("| ne sait pas l'utiliser. Voir le README, « Carte graphique NVIDIA ».")
+        print("| ne sait pas l'utiliser. Mettez à jour le pilote NVIDIA, puis supprimez")
+        print("| le dossier .venv et relancez Caquot.")
     return "cpu"
 
 

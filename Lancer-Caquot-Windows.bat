@@ -61,7 +61,7 @@ echo.
 echo  [ATTENTION] Le dossier de Caquot est range dans un chemin long.
 echo  L'installation risque d'echouer. Conseil : fermez cette fenetre,
 echo  deplacez le dossier dans un emplacement court comme C:\Caquot,
-echo  puis relancez. Pour essayer quand meme, appuyez sur une touche.
+echo  puis relancez. Pour essayer malgre tout, appuyez sur une touche.
 pause >nul
 exit /b 0
 
@@ -74,7 +74,7 @@ echo      et installez-le.
 echo   2. Ouvrez le Terminal et tapez :   py install 3.14
 echo   3. Relancez ce fichier.
 echo.
-echo  Detail dans le fichier README, section Installation sous Windows.
+echo  Detail dans le fichier README, section Installation Windows 11.
 goto :fin
 
 :err_install

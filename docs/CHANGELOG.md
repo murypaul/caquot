@@ -6,11 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-## [1.1.1] - 2026-10
+
+## [1.2.0] - 2026-10-06
+
+Windows support.
+
+### Added
+- Windows launcher `Lancer-Caquot-Windows.bat` (replaces `run.bat`): checks the
+Python version, installs GPU support when an NVIDIA card is present, and
+recovers from an interrupted installation.
+- Step-by-step Windows installation guide in the README.
+- TIFF images (`.tif`, `.tiff`) and upper-case extensions (`.JPG`).
+- Inventory numbers are read from file names following the "Musée de France"
+convention.
 
 ### Changed
-- Fixed an error in the Windows launcher that caused the virtual environment to
-be created in the wrong location.
+- Thesaurus files saved from Excel are accepted (`;` separator, Windows
+encoding, upper-case headers).
+- Downloaded models work offline.
+- File and folder pickers open in front of the terminal.
+- Unreadable images are listed at the end instead of stopping the batch, and
+progress is saved every 20 images.
+- Re-importing an image folder keeps its existing results.
+
+### Fixed
+- Thesaurus vectors were slightly different at each run (model not in
+evaluation mode).
+- Crashes when an action was run before a thesaurus, a model or vectors existed.
+- The GPU was never used on Windows.
 
 
 ## [1.1.0] - 2026-10-01
