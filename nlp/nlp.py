@@ -37,18 +37,10 @@ def nlp_image_text(connection, cursor):
         # Sélection du modèle
     model_dict = model.select_model(connection, cursor)
     if model_dict is None:
-        return
-
-    # Chargement du modèle
-    print("Chargement du modèle OpenCLIP...")
-    result = model.model_loading(connection, cursor, model_dict)
-    if result is None:
         print("Annulation...\n")
         return
-    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
-
-    # Récupération des vecteurs "Images"
+        # Récupération des vecteurs "Images"
     cursor.execute("""
         SELECT IMAGE_VECTORS.image_vectors_id, IMAGE_VECTORS.image_id, IMAGE_VECTORS.vectors, IMAGE_VECTORS.clip_model_id, IMAGE.name, IMAGE.path
         FROM IMAGE_VECTORS
@@ -75,12 +67,23 @@ def nlp_image_text(connection, cursor):
         }
         images_vectors.append(images_vectors_dict)
     print(f"{len(images_vectors)} vecteurs 'IMAGES' récupérés\n")
+    if not images_vectors:
+        print("Aucune image vectorisée pour le moment. Lancez d'abord Vectorisation -> Vectoriser des images")
+        return
+
+    # Chargement du modèle
+    print("Chargement du modèle OpenCLIP...")
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
     print("SYSTEME PRÊT")
     print("| ATTENTION :\n| un résultat n'équivaut pas à une correspondance exacte, cela est dû à\n| la méthode de rapprochement (cf. README).\n| cos. sim. = Similarité Cosinus\n")
 
     while True:
-        print("Entrez un mot ou une phrase à comparer aux termes du thésaurus :\n'RETOUR' pour arrêter la saisie\n----------------------------------------")
+        print("Entrez un mot ou une phrase à comparer aux images :\n'RETOUR' pour arrêter la saisie\n----------------------------------------")
 
         input_to_tokenize = input("CAQUOT> ")
         if input_to_tokenize.lower() in ["", "cancel", "annuler", "retour"]:
@@ -124,7 +127,7 @@ def nlp_image_text(connection, cursor):
                 "image_id": candidat["image_id"],
                 "image_name": candidat["image_name"],
                 "image_path": candidat["image_path"],
-                "similarity": similarity_value
+                "similarity": candidat["similarity"]
             }
 
             candidates_indexed_list.append(candidates_indexed_list_dict)
@@ -153,20 +156,13 @@ def nlp_text_text(connection, cursor):
     # Sélection du modèle
     model_dict = model.select_model(connection, cursor)
     if model_dict is None:
+        print("Annulation...\n")
         return
     # Sélection du thésaurus
     thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
     if thesaurus_name is None:
-        return
-
-    # Chargement du modèle
-    print("Chargement du modèle OpenCLIP...")
-    result = model.model_loading(connection, cursor, model_dict)
-    if result is None:
         print("Annulation...\n")
         return
-    clip_model, preprocess, tokenizer, device, model_name, model_id = result
-
 
     # Récupération des vecteurs "thésaurus"
     cursor.execute("""
@@ -195,6 +191,17 @@ def nlp_text_text(connection, cursor):
         }
         thesaurus_vectors.append(thesaurus_vectors_dict)
     print(f"{len(thesaurus_vectors)} vecteurs 'THESAURUS' récupérés")
+    if not thesaurus_vectors:
+        print("Aucun thésaurus vectorisé pour le moment. Lancez d'abord Vectorisation -> Vectoriser les thesauri")
+        return
+
+    # Chargement du modèle
+    print("Chargement du modèle OpenCLIP...")
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
     print("SYSTEME PRÊT")
     print("| ATTENTION :\n| un résultat n'équivaut pas à une correspondance exacte, cela est dû à\n| la méthode de rapprochement (cf. README).\n| cos. sim. = Similarité Cosinus\n")
