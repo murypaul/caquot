@@ -12,6 +12,9 @@ from . import image as img
 from PIL import Image
 
 
+PROGRESS_BAR_WIDTH = 30
+
+
 def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
     print("""+---------------------------+
 | Vectorisation 'THESAURUS' |
@@ -80,13 +83,7 @@ def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
             (term['thesaurus_id'], blobed_tokenized_text, model_id)
         )
 
-        # Barre de progression
-        progress = index / total_thesaurus_to_tokenize
-        bar = "#" * int(progress * 30) # '30' largeur de la barre de progression
-        void = "_" * (30 - len(bar))
-        percentage = (index / total_thesaurus_to_tokenize) * 100
-
-        print(f"\r[{bar}{void}] {percentage:.1f}% | {index}/{total_thesaurus_to_tokenize}", end="", flush=True)
+        progress_bar(index, total_thesaurus_to_tokenize)
     print()
 
     cursor.execute("""
@@ -127,7 +124,7 @@ def image_embedding(connection, cursor): # Vectorisation des images
             print("""
 | /!\\ CONSIDERATIONS TECHNIQUES :
 | 
-|Formats acceptés : '.jpg' / '.jpeg' / '.png' / '.tif' / '.tiff'
+| Formats acceptés : '.jpg' / '.jpeg' / '.png' / '.tif' / '.tiff'
 |
 | Seul le chemin de l'image est enregistré en base.
 | Le fichier original n'est pas copié.
@@ -145,9 +142,9 @@ def image_embedding(connection, cursor): # Vectorisation des images
             # Enregistrement des images en base
             images_to_tokenize, name_counter = img.register_images(cursor, images)
             if name_counter["file_counter"] >= 1:
-                print(f"\n{name_counter['mdf_counter']} numéros d'inventaire reconnus (norme Musée de France).")
+                print(f"{name_counter['mdf_counter']} numéros d'inventaire reconnus (norme Musée de France).")
                 print(f"{name_counter['file_counter']} noms hors norme : le nom du fichier est utilisé tel quel comme identifiant.")
-                print(f"   Exemples : {', '.join(name_counter['example_files'])}")
+                print(f"   Exemples : {', '.join(name_counter['example_files'])}\n")
 
             break
         
@@ -197,10 +194,43 @@ def image_embedding(connection, cursor): # Vectorisation des images
     # Vectorisation des images
     print(f"Vectorisation...")
     
+    successful_images, failed_images = embed_images(cursor, model_to_use, preprocess, device, model_id, images_to_tokenize)
+        
+    print(f"{len(successful_images)} images vectorisées")
+    if not failed_images:
+        print()
+    if failed_images:
+        print(f"{len(failed_images)} images n'ont pas pu être vectorisées")
+        for failed_image in failed_images[:10]:
+            print(f"    - {failed_image["path"]} : {failed_image["error"]}\n")
+
+
+def progress_bar(index: int, total: int):
+    progress = index / total
+    bar = "#" * int(progress * PROGRESS_BAR_WIDTH)
+    void = "_" * (PROGRESS_BAR_WIDTH - len(bar))
+    percentage = progress * 100
+
+    print(f"\r[{bar}{void}] {percentage:.1f}% | {index}/{total}", end="", flush=True)
+
+
+def embed_images(cursor, model_to_use, preprocess, device, model_id, images_to_tokenize) -> tuple[list[dict], list[dict]]:
     total_images_to_tokenize = len(images_to_tokenize)
+
+    successful_images = []
+    failed_images = []
+
     for index, file in enumerate(images_to_tokenize, start=1):
-        image = Image.open(file["image_path"])
-        preprocessed_image = preprocess(image).unsqueeze(0).to(device)
+        try:
+            with Image.open(file["image_path"]) as image:
+                preprocessed_image = preprocess(image).unsqueeze(0).to(device)
+        except Exception as error:
+            failed_images.append({
+                "path": file["image_path"],
+                "error": str(error)
+            })
+            progress_bar(index, total_images_to_tokenize)
+            continue
 
         with torch.no_grad():
             tokenized_image = model_to_use.encode_image(preprocessed_image)
@@ -216,31 +246,8 @@ def image_embedding(connection, cursor): # Vectorisation des images
             """,
             (file['image_id'], blobed_tokenized_image, model_id)
         )
-
-        # Barre de progression
-        progress = index / total_images_to_tokenize
-        bar = "#" * int(progress * 30) # '30' largeur de la barre de progression
-        void = "_" * (30 - len(bar))
-        percentage = (index / total_images_to_tokenize) * 100
-
-        print(f"\r[{bar}{void}] {percentage:.1f}% | {index}/{total_images_to_tokenize}", end="", flush=True)
+        progress_bar(index, total_images_to_tokenize)
+        successful_images.append(file)
     print()
-    
-    # Print du nombre d'images vectorisées
-    total = 0
-    for row in images_to_tokenize:
-        cursor.execute("""
-            SELECT IMAGE.image_id
-            FROM IMAGE
-            JOIN IMAGE_VECTORS
-                ON IMAGE.image_id = IMAGE_VECTORS.image_id
-            WHERE IMAGE_VECTORS.clip_model_id = ? AND IMAGE.path = ?
-            """,
-            (model_id, row["image_path"])
-        )
-        result = cursor.fetchone()
 
-        if result:
-            total += 1
-    
-    print(f"{total} images vectorisées\n")
+    return successful_images, failed_images
