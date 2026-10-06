@@ -8,7 +8,7 @@ from . import db
 from . import thesaurus
 from . import model
 from . import dialogs
-from .image import filename_to_idno
+from . import image as img
 from PIL import Image
 
 
@@ -139,110 +139,35 @@ def image_embedding(connection, cursor): # Vectorisation des images
             
             # Liste des fichiers images et création d'une liste
             print("Récupération des images...")
+            images, ignored = img.list_image_files(images_path_input)         
+            print(f"Dossier :\n  {len(images)} images\n  {len(ignored)} fichiers ignorés (extension non prise en charge)\n")
 
-            files_list = os.listdir(images_path_input)
-
-            files = [] # Liste des fichiers
-            for file in files_list:
-                file_path = os.path.join(images_path_input, file)
-
-                if not os.path.isfile(file_path):
-                    continue
-
-                files.append(file_path)
-            
-            print(f"Dossier : {len(files)} fichiers")
-
-            # Enregistrement des liens et noms des images dans la base de données
-            images_to_tokenize = []
-            mdf_count = 0
-            file_count = 0
-            example_files = []
-
-            for file in files: # Liste des images
-                if not file.lower().endswith(('.jpg', '.png', '.jpeg', '.tif', '.tiff')):
-                    continue
-
-                image_no_path = os.path.basename(file)
-                image_name, _ = os.path.splitext(image_no_path)
-                idno, origin = filename_to_idno(image_name)
-
-                if origin == "mdf":
-                    mdf_count += 1
-                else:
-                    file_count += 1
-                    if len(example_files) < 3:
-                        example_files.append(image_name)
-
-                cursor.execute(
-                    """INSERT INTO IMAGE (path, name, idno) VALUES (?, ?, ?)
-                       ON CONFLICT(path) DO UPDATE SET name = excluded.name, idno = COALESCE(IMAGE.idno, excluded.idno)
-                       RETURNING image_id""",
-                    (file, image_name, idno)
-                )
-
-                image_id = cursor.fetchone()["image_id"]
-
-                images_to_tokenize_dict = {
-                    "image_id": image_id,
-                    "image_path": file
-                }
-
-                images_to_tokenize.append(images_to_tokenize_dict)
-
-            if file_count:
-                print(f"\n{mdf_count} numéros d'inventaire reconnus (norme Musée de France).")
-                print(f"{file_count} noms hors norme : le nom du fichier est utilisé tel quel comme identifiant.")
-                print(f"   Exemples : {', '.join(example_files)}")
+            # Enregistrement des images en base
+            images_to_tokenize, name_counter = img.register_images(cursor, images)
+            if name_counter["file_counter"] >= 1:
+                print(f"\n{name_counter['mdf_counter']} numéros d'inventaire reconnus (norme Musée de France).")
+                print(f"{name_counter['file_counter']} noms hors norme : le nom du fichier est utilisé tel quel comme identifiant.")
+                print(f"   Exemples : {', '.join(name_counter['example_files'])}")
 
             break
         
         elif scope_int == 2: # Toutes les images de la base
             print("Récupération des images...")
 
-            # Récupération des images
-            cursor.execute(
-                "SELECT * FROM IMAGE"
-            )
-            images_in_db = cursor.fetchall()
-
-            # Insertion des images dans la variable 'images_to_tokenize' et vérification des liens morts
-            images_to_tokenize = []
-            unprocessed_images = []
-            for image in images_in_db:
-                image_path = image["path"]
-                
-                if not os.path.exists(image_path):
-                    unprocessed_images.append(image_path)
-                    continue
-
-                images_to_tokenize_dict = {
-                    "image_id": image["image_id"],
-                    "image_path": image_path
-                }
-
-                images_to_tokenize.append(images_to_tokenize_dict)
-
+            # Récupération des images et des références mortes
+            images_to_tokenize, dead_paths = img.get_images_from_db(cursor)
             if not images_to_tokenize:
                 print("Aucune image en base\nAnnulation...")
                 break
-
             print(f"{len(images_to_tokenize)} images récupérées")
 
-            if unprocessed_images: # Références mortes dans la base
+            if dead_paths: # Références mortes dans la base
                 while True:
-                    print(f"{len(unprocessed_images)} images n'existent plus sur le disque.\nLes supprimer de la base ? (O/N)")
+                    print(f"{len(dead_paths)} images n'existent plus sur le disque.\nLes supprimer de la base ? (O/N)")
                     purge = input("CAQUOT> ")
 
                     if purge.lower() in ['yes', 'y', 'o', 'oui']: # Purge des références mortes
-                        for image_path in unprocessed_images:
-                            cursor.execute("""
-                                DELETE
-                                FROM IMAGE
-                                WHERE path = ?
-                                """,
-                                (image_path,)
-                            )
+                        img.purge_images(cursor, dead_paths)
                         print("Références mortes purgées de la base.\n")
                         break
                     
