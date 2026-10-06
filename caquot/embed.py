@@ -13,6 +13,7 @@ from PIL import Image
 
 
 PROGRESS_BAR_WIDTH = 30
+COMMIT_EVERY_N_LOOPS = 20
 
 
 def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
@@ -247,7 +248,13 @@ def embed_images(cursor, model_to_use, preprocess, device, model_id, images_to_t
             (file['image_id'], blobed_tokenized_image, model_id)
         )
         progress_bar(index, total_images_to_tokenize)
+
         successful_images.append(file)
+
+        if len(successful_images) % COMMIT_EVERY_N_LOOPS == 0:
+            cursor.connection.commit()
     print()
+
+    cursor.connection.commit()
 
     return successful_images, failed_images
