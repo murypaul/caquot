@@ -7,7 +7,8 @@ import os
 from . import db
 from . import thesaurus
 from . import model
-from tkinter import filedialog
+from . import dialogs
+from .image import filename_to_idno
 from PIL import Image
 
 
@@ -30,9 +31,11 @@ def thesaurus_embedding(connection, cursor): # Vectorisation du thésaurus
 
     # Chargement du modèle
     print("Chargement du modèle OpenCLIP...")
-    clip_model, preprocess, tokenizer, device, model_name, model_id = model.model_loading(
-        connection, cursor, model_dict
-    )
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
     # Récupération des termes du thésaurus et insertion dans un dictionnaire
     print("Récupération du thésaurus...")
@@ -124,12 +127,12 @@ def image_embedding(connection, cursor): # Vectorisation des images
             print("""
 | /!\\ CONSIDERATIONS TECHNIQUES :
 | 
-|Formats acceptés : '.jpg' / '.jpeg' / '.png'
+|Formats acceptés : '.jpg' / '.jpeg' / '.png' / '.tif' / '.tiff'
 |
 | Seul le chemin de l'image est enregistré en base.
 | Le fichier original n'est pas copié.
             """)
-            images_path_input = filedialog.askdirectory(mustexist=True, title='Répertoire des images')
+            images_path_input = dialogs.ask_directory("Répertoire des images")
             if not images_path_input:
                 print("Annulation...\n")
                 return
@@ -152,26 +155,45 @@ def image_embedding(connection, cursor): # Vectorisation des images
 
             # Enregistrement des liens et noms des images dans la base de données
             images_to_tokenize = []
+            mdf_count = 0
+            file_count = 0
+            example_files = []
+
             for file in files: # Liste des images
-                if not file.endswith(('.jpg', '.png', '.jpeg')):
+                if not file.lower().endswith(('.jpg', '.png', '.jpeg', '.tif', '.tiff')):
                     continue
 
                 image_no_path = os.path.basename(file)
                 image_name, _ = os.path.splitext(image_no_path)
+                idno, origin = filename_to_idno(image_name)
+
+                if origin == "mdf":
+                    mdf_count += 1
+                else:
+                    file_count += 1
+                    if len(example_files) < 3:
+                        example_files.append(image_name)
 
                 cursor.execute(
-                    "INSERT OR REPLACE INTO IMAGE (path, name) VALUES (?, ?)",
-                    (file, image_name)
+                    """INSERT INTO IMAGE (path, name, idno) VALUES (?, ?, ?)
+                       ON CONFLICT(path) DO UPDATE SET name = excluded.name, idno = COALESCE(IMAGE.idno, excluded.idno)
+                       RETURNING image_id""",
+                    (file, image_name, idno)
                 )
 
-                image_id = cursor.lastrowid
+                image_id = cursor.fetchone()["image_id"]
 
                 images_to_tokenize_dict = {
                     "image_id": image_id,
                     "image_path": file
                 }
-            
+
                 images_to_tokenize.append(images_to_tokenize_dict)
+
+            if file_count:
+                print(f"\n{mdf_count} numéros d'inventaire reconnus (norme Musée de France).")
+                print(f"{file_count} noms hors norme : le nom du fichier est utilisé tel quel comme identifiant.")
+                print(f"   Exemples : {', '.join(example_files)}")
 
             break
         
@@ -241,7 +263,11 @@ def image_embedding(connection, cursor): # Vectorisation des images
         return
 
     # Chargement du modèle
-    model_to_use, preprocess, tokenizer, device, model_name, model_id = model.model_loading(connection, cursor, model_dict)
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    model_to_use, preprocess, tokenizer, device, model_name, model_id = result
     
     # Vectorisation des images
     print(f"Vectorisation...")

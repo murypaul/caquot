@@ -34,14 +34,18 @@ def nlp_image_text(connection, cursor):
 | Recherche 'texte <> images' par Traitement du Langage Naturel |
 +---------------------------------------------------------------+\n""")
 
-    # Sélection du modèle
+        # Sélection du modèle
     model_dict = model.select_model(connection, cursor)
+    if model_dict is None:
+        return
 
     # Chargement du modèle
     print("Chargement du modèle OpenCLIP...")
-    clip_model, preprocess, tokenizer, device, model_name, model_id = model.model_loading(
-        connection, cursor, model_dict
-    )
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
 
     # Récupération des vecteurs "Images"
@@ -148,14 +152,20 @@ def nlp_text_text(connection, cursor):
 
     # Sélection du modèle
     model_dict = model.select_model(connection, cursor)
+    if model_dict is None:
+        return
     # Sélection du thésaurus
     thesaurus_name = thesaurus.select_thesaurus(connection, cursor)
+    if thesaurus_name is None:
+        return
 
     # Chargement du modèle
     print("Chargement du modèle OpenCLIP...")
-    clip_model, preprocess, tokenizer, device, model_name, model_id = model.model_loading(
-        connection, cursor, model_dict
-    )
+    result = model.model_loading(connection, cursor, model_dict)
+    if result is None:
+        print("Annulation...\n")
+        return
+    clip_model, preprocess, tokenizer, device, model_name, model_id = result
 
 
     # Récupération des vecteurs "thésaurus"

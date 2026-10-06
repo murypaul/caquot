@@ -13,8 +13,7 @@ if [ ! -d ".venv" ]; then
     echo "Installation des dépendances..."
     python3 -m venv .venv
     .venv/bin/pip install --quiet --upgrade pip
-    .venv/bin/pip install -r requirements.txt
-    pip install -e .
+    .venv/bin/pip install -r requirements.txt -r requirements-torch.txt
 fi
 
 .venv/bin/python -m caquot.main

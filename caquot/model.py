@@ -2,15 +2,17 @@ from . import db
 import open_clip
 import torch
 import os
+import shutil
+from pathlib import Path
+
 from huggingface_hub import scan_cache_dir
 from huggingface_hub.utils import logging as hf_logging
+from huggingface_hub import constants as hf_constants
 
+from . import MODELS_DIR
 
 # Cache les avertissement HuggingFace
 hf_logging.set_verbosity_error()
-
-# Dossier où sont stockés les poids des modèles
-MODELS_CACHE_DIR = "data/models"
 
 
 def load_model(connection, cursor):
@@ -64,6 +66,11 @@ def load_model(connection, cursor):
         else:
             print("/!\\ Entrée invalide. Veuillez réessayer.\n")
 
+    # Vérification que la configuration existe réellement
+    cfg = open_clip.get_pretrained_cfg(model_architecture, model_pretrained_data)
+    if not cfg:
+        print(f"Aucune configuration connue pour : '{model_architecture}' / '{model_pretrained_data}'\nVérifiez les noms et réessayez\nS'il s'agit d'un modèle local : *[WIP]*")
+        return    
 
     # Inscription du modèle en base
     model_name = f"{model_architecture} - {model_pretrained_data}"
@@ -91,15 +98,10 @@ def load_model(connection, cursor):
         input_download_model = input("CAQUOT> ")
         if input_download_model.lower() in ["yes", "y", "oui", "o"]:
             weights_path = download_model(model_architecture, model_pretrained_data)
-            
-            if not weights_path:
-                print(f"Aucune configuration connue pour : '{model_architecture}' / '{model_pretrained_data}'\nVérifiez les noms et réessayez\nS'il s'agit d'un modèle local : *[WIP]*") #TODO Gérer modèle local
-                return
-            else:
-                cursor.execute(
-                    "UPDATE CLIP_MODEL SET weights_path = ? WHERE name = ?",
-                    (weights_path, model_name)
-                )
+            cursor.execute(
+                "UPDATE CLIP_MODEL SET weights_path = ? WHERE name = ?",
+                (weights_path, model_name)
+            )
             return
         elif input_download_model.lower() in ["no", "n", "non"]:
             print("Retour...")
@@ -116,7 +118,7 @@ def download_model(model_architecture, model_pretrained_data):
         weights_path = None
         return weights_path
 
-    weights_path = open_clip.download_pretrained(cfg, cache_dir=MODELS_CACHE_DIR)
+    weights_path = open_clip.download_pretrained(cfg, cache_dir=MODELS_DIR)
     return weights_path
 
 
@@ -195,12 +197,12 @@ def delete_model(connection, cursor):
                 model_to_delete = row["model_name"]
                 model_found = True
                 break
-        if user_input.lower() in ['retour', 'quitter', 'cancel', 'quit']:
-            return
-        else:
-            print("/!\\ Entrée invalide. Veuillez réessayer\n")
+
         if model_found:
             break
+        if user_input.lower() in ['retour', 'quitter', 'cancel', 'quit']:
+            return
+        print("/!\\ Entrée invalide. Veuillez réessayer\n")
     
     # Vérification du modèle à supprimer
     while True:
@@ -252,11 +254,11 @@ def delete_model_weights(weights_path):
     if not weights_path:
         return
 
-    cache_dir_abs = os.path.abspath(MODELS_CACHE_DIR)
+    cache_dir_abs = os.path.abspath(MODELS_DIR)
     weights_path_abs = os.path.abspath(weights_path)
 
     # Ne supprime pas le cache si en dehors du dossier de Caquot
-    if not weights_path_abs.startswith(cache_dir_abs): 
+    if not Path(weights_path_abs).is_relative_to(cache_dir_abs):
         return
 
     # Cas HuggingFaceHub : utilise l'API HuggingFace pour supprimer les symlinks et blobs
@@ -354,6 +356,32 @@ Retour...""")
     return model
 
 
+def pick_device(): # Vérifie si le GPU est utilisable
+    if torch.cuda.is_available():
+        try:
+            torch.zeros(1, device="cuda")  # test réel : pilote trop ancien, carte non prise en charge...
+            name = torch.cuda.get_device_name(0)
+            vram = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            print(f"Calcul sur la carte graphique : {name} ({vram:.0f} Go)")
+            return "cuda"
+        except Exception as error:
+            print(f"/!\\ Carte graphique détectée mais inutilisable : {error}")
+    print("Calcul sur le processeur (plus lent).")
+    if torch.__version__.endswith("+cpu") and shutil.which("nvidia-smi"):
+        print("| Une carte NVIDIA est présente, mais la version de PyTorch installée")
+        print("| ne sait pas l'utiliser. Voir le README, « Carte graphique NVIDIA ».")
+    return "cpu"
+
+
+def _load_clip_components(model_architecture, model_pretrained_data, device):
+    clip_model, _, preprocess = open_clip.create_model_and_transforms(
+        model_architecture, pretrained=model_pretrained_data, device=device, cache_dir=MODELS_DIR
+    )
+    clip_model.eval()
+    tokenizer = open_clip.get_tokenizer(model_architecture, cache_dir=MODELS_DIR)
+    return clip_model, preprocess, tokenizer
+
+
 def model_loading(connection, cursor, model):
     # Définition des variables
     model_id = model["model_id"]
@@ -361,13 +389,28 @@ def model_loading(connection, cursor, model):
     model_architecture = model["model_architecture"]
     model_pretrained_data = model["model_pretrained_data"]
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = pick_device()
 
-    model, _, preprocess = open_clip.create_model_and_transforms(
-        model_architecture, pretrained=model_pretrained_data, device=device, cache_dir=MODELS_CACHE_DIR
-    )
-
-    tokenizer = open_clip.get_tokenizer(model_architecture)
+    # 1er essai : sans accès réseau, vérification de présence du modèle sur le disque
+    hf_constants.HF_HUB_OFFLINE = True
+    try:
+        clip_model, preprocess, tokenizer = _load_clip_components(
+            model_architecture, model_pretrained_data, device
+        )
+    except Exception:
+        # 2e essai : modèle absent du disque, on autorise son téléchargement
+        hf_constants.HF_HUB_OFFLINE = False
+        print("Modèle absent du disque : téléchargement en cours...")
+        try:
+            clip_model, preprocess, tokenizer = _load_clip_components(
+                model_architecture, model_pretrained_data, device
+            )
+        except Exception as error:
+            print("/!\\ Le modèle n'a pas pu être chargé.")
+            print("| Vérifiez la connexion internet. Sur un réseau d'établissement, le site")
+            print("| huggingface.co est peut-être bloqué.")
+            print(f"| Erreur : {error}")
+            return None
 
     # Return des variables
-    return model, preprocess, tokenizer, device, model_name, model_id
+    return clip_model, preprocess, tokenizer, device, model_name, model_id

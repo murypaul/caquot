@@ -2,7 +2,7 @@ import os
 import sqlite3
 import numpy as np
 
-DB_PATH = "data/data.db"
+from . import DB_PATH
 
 
 def get_connection(db_path=DB_PATH):

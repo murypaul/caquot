@@ -1,7 +1,63 @@
 from . import db
+from . import dialogs
+
 import csv
 import os
-from tkinter import filedialog
+
+
+def decode_thesaurus_bytes(raw_file : bytes) -> dict: # Détecte l'encodage et renvoi le texte décodé
+    try:
+        decoded_file = raw_file.decode("utf-8-sig")
+        decoded = {
+            "encoding": "utf-8-sig",
+            "decoded_file": decoded_file
+        }
+    except UnicodeDecodeError:
+        decoded_file = raw_file.decode("cp1252")
+        decoded = {
+            "encoding": "cp1252",
+            "decoded_file": decoded_file
+        }
+
+    return decoded
+
+
+def csv_separator_detector(row : str) -> str: # Détecte le séparateur du csv
+    if row.count(";") > row.count(","):
+        return(";")
+    elif row.count(",") > row.count(";"):
+        return(",")
+    else:
+        while True:
+            print("""Le séparateur du csv n'a pas pu être détecté automatiquement.
+
+S'agit-il de :
+ [1] virgule (,)
+ [2] point-virgule (;)
+""")
+            response = input("CAQUOT> ")
+
+            if response in ["1", ","]:
+                return ","
+            if response in ["2", ";"]:
+                return ";"
+            else:
+                print("/!\\ Entrée invalide. Veuillez réessayer.\n")
+
+
+def missing_thesaurus_columns(fieldnames : list) -> list: # Détecte si des colonnes du csv sont manquantes
+    cleaned = []
+    for name in fieldnames:
+        cleaned.append(name.strip().lower())
+
+    expected = ["id", "label", "parent_id", "path", "notes"]
+    missing = []
+
+    for column in expected:
+        if column not in cleaned:
+            missing.append(column)
+
+    return missing # Renvoi le nom des colonnes manquantes
 
 
 def load_thesaurus(connection, cursor):
@@ -12,7 +68,7 @@ def load_thesaurus(connection, cursor):
     print(f"|  {'{:<10} {:<10} {:<10} {:<10} {:<10}'.format('ID', 'LABEL', 'PARENT_ID', 'PATH', 'NOTES')}\n")
 
     print("Chemin du thésaurus : ")
-    thesaurus_path = filedialog.askopenfilename()
+    thesaurus_path = dialogs.ask_csv_file("Thésaurus")
     if not thesaurus_path:
         print("Aucun fichier sélectionné\nRetour...\n")
         return
@@ -22,9 +78,27 @@ def load_thesaurus(connection, cursor):
     # Insertion des lignes du csv dans une variable 'thesaurus'
     print(f"Récupération de '{thesaurus_name}'...")
 
-    thesaurus = []
-    with open(thesaurus_path, encoding="utf-8") as file:
-        reader = csv.DictReader(file)
+    with open(thesaurus_path, "rb") as file:
+        raw = file.read()
+
+        # Détection de l'encodage et renvoi du fichier décodé        
+        decoded = decode_thesaurus_bytes(raw)
+        lines = decoded["decoded_file"].splitlines()
+
+        # Détection du séparateur
+        separator = csv_separator_detector(lines[0])
+        reader = csv.DictReader(lines, delimiter=separator)
+        reader.fieldnames = [name.strip().lower() for name in reader.fieldnames]
+
+        # Vérification de la présence des colonnes attendues
+        missing = missing_thesaurus_columns(reader.fieldnames)
+        if missing:
+            print(f"/!\\ Colonnes manquantes : {', '.join(missing)}")
+            print(f"| Colonnes lues : {', '.join(reader.fieldnames)}")
+            print("Annulation...\n")
+            return
+
+        thesaurus = []
         for row in reader:
             thesaurus.append(row)
     
@@ -188,12 +262,12 @@ def delete_thesaurus(connection, cursor):
                 thesaurus_to_delete = row["thesaurus_name"]
                 thesaurus_found = True
                 break
+        if thesaurus_found:
+            break
         if user_input.lower() in ['retour', 'quitter', 'cancel', 'quit']:
             return
         else:
             print("/!\\ Entrée invalide. Veuillez réessayer.\n")
-        if thesaurus_found:
-            break
 
     while True:
         print(f"""----------------------------------------

@@ -321,4 +321,5 @@ def natural_language_processing_menu(): # Menu de gestion de le recherche en lan
             print("Option invalide. Veuillez recommencer.")
 
 
-main_menu()
+if __name__ == '__main__':
+    main_menu()

@@ -4,7 +4,7 @@ import os
 import csv
 from . import thesaurus
 from . import model
-from tkinter import filedialog
+from . import dialogs
 from datetime import datetime
 
 
@@ -15,7 +15,7 @@ def export (connection, cursor):
 
     # Chemin d'export du fichier
     print("Dossier d'export")
-    export_path_input = filedialog.askdirectory(mustexist=True, title='Dossier d''export')
+    export_path_input = dialogs.ask_directory("Dossier d'export")
     if not export_path_input:
         print("Annulation...\n")
         return
@@ -34,7 +34,7 @@ def export (connection, cursor):
             model_name = model.select_model(connection, cursor)
 
             cursor.execute("""
-                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
+                SELECT IMAGE.name AS image_name, COALESCE(IMAGE.idno, IMAGE.name) AS accession_number, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
                 FROM IMAGE_THESAURUS
                 JOIN IMAGE
                     ON IMAGE_THESAURUS.image_id = IMAGE.image_id
@@ -53,7 +53,7 @@ def export (connection, cursor):
 
         elif response.lower() in ['no', 'n', 'non']: # Récupération de toutes les données
             cursor.execute("""
-                SELECT IMAGE.name AS image_name, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
+                SELECT IMAGE.name AS image_name, COALESCE(IMAGE.idno, IMAGE.name) AS accession_number, THESAURUS.thesaurus_id AS thesaurus_id, IMAGE_THESAURUS.cosinus_similarity AS cosinus_similarity, CLIP_MODEL.name AS clip_model_name, CLIP_MODEL.clip_model_id AS clip_model_id
                 FROM IMAGE_THESAURUS
                 JOIN IMAGE
                     ON IMAGE_THESAURUS.image_id = IMAGE.image_id
@@ -80,16 +80,10 @@ def export (connection, cursor):
 
     data = []
     for row in results:
-        # Mise en forme du nom de l'image sur le modèle du numéro d'inventaire Musée de France "[année].[lot].[bien](.[sous-inventaire])"
-        #image_without_path = os.path.basename(row["image_name"]) # Retire le chemin du nom de l'image #TOVERIFY
-        #image_without_extension = os.path.splitext(image_without_path) # Retire l'extension #TOVERIFY
-        image_without_suffix = row["image_name"].removesuffix("-POS") # Retire le suffixe s'il y en a un
-        image_final_name = image_without_suffix.replace("_", ".") # Remplace les '_' par des '.'
-
         data_dict = {
-            "accession_number": image_final_name,
+            "accession_number": row["accession_number"],
             "thesaurus_id": row["thesaurus_id"],
-            "cosinus_similarity": f"{row['cosinus_similarity']:.3f}", # Modifier ':.4f' pour changer le nombre de chiffres après la virgule
+            "cosinus_similarity": f"{row['cosinus_similarity']:.3f}", # Modifier ':.3f' pour changer le nombre de chiffres après la virgule
             "model_name": row["clip_model_name"]
         }
 
