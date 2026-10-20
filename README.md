@@ -337,9 +337,9 @@ réserves en fond par exemple : toute distraction emmenera le modèle sur de
 fausses pistes), nettes, correctement éclairées et exposées et de bonne
 résolution. Néanmoins, **le modèle redimensionne et tronque de lui même l'image**
 **à un format carré de 224 x 224 pixels**, ce qui constitue actuellement la
-taille minimal à fournir. Une mise à jour future de Caquot prévoit de mieux
+taille minimale à fournir. Une mise à jour future de Caquot prévoit de mieux
 exploiter la résolution de l'image : elle sera d'abord vectorisée dans son
-ensemble, puis décupée en 9 parties, qui seront vectorisée à leur tour. Lors de
+ensemble, puis découpée en 9 parties, qui seront vectorisées à leur tour. Lors de
 l'alignement, la correspondance entre le(s) terme(s) et chacune des 9 parties
 sera combinée avec celle de l'image entière, avec une pondération permettant de
 mieux prendre en compte à la fois le contexte général de l'image et ses détails. 
@@ -418,7 +418,7 @@ Ici encore, les meilleurs résultats ne sont pas forcéments les plus pertinents
 #### Recherche texte / image
 
 Cette fonction se rapproche beaucoup du fonctionnement général de Caquot, sauf
-qu'au lieu d'un thésaurus fermé, vus pouvez utiliser n'importe quel terme ou
+qu'au lieu d'un thésaurus fermé, vous pouvez utiliser n'importe quel terme ou
 phrase.
 Cette recherche permet de balayer **toutes** les images enregistrées dans la
 base de données et d'en sortir les résultats les plus proches.
