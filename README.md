@@ -239,14 +239,14 @@ d'autres but que de vous aider à améliorer les résultats obtenus.
 ##### Principe directeur
 
 Une note de thésaurus ne doit pas définir le terme, **elle doit décrire à quoi**
-**il ressemble sur une photo**. (Radford et al., 2021)
+**il ressemble sur une photo**.
 
 ##### Quand écrire une note
 
 Ecrivez une note quand le terme remplit au moins une de ces conditions :
 - **Polysémique**. Le mot désigne deux choses visuellement différentes (ex.
 "grue" : oiseau ou engin de chantier). Sans contexte, le modèle ne sait pas 
-trancher. (Radford et al., 2021)
+trancher.
 - **Visuellement ambigu ou potentiellement peu représenté** dans les données
 d'entraînement. Valable pour du vocabulaire technique, des régionalisme, un
 terme daté, etc.
@@ -267,7 +267,7 @@ modèle dans un mauvais sens.
 
 Une note trop générique ou bruitée, typiquement le cas d'une définition de
 dictionnaire systématique, tent à diluer la spécificité sémantique plutôt qu'à
-l'améliorer (Bhattacharya et al., 2026).
+l'améliorer.
 Il vaut mieux **une seule bonne note ciblée que dix notes vagues** et mieux
 vaut **l'absence de note qu'une note qui n'apporte rien**.
 
