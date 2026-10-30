@@ -266,7 +266,7 @@ une note imprécise ou erronée est pire qu'une absence de note : elle pousse le
 modèle dans un mauvais sens.
 
 Une note trop générique ou bruitée, typiquement le cas d'une définition de
-dictionnaire systématique, tent à diluer la spécificité sémantique plutôt qu'à
+dictionnaire systématique, tend à diluer la spécificité sémantique plutôt qu'à
 l'améliorer.
 Il vaut mieux **une seule bonne note ciblée que dix notes vagues** et mieux
 vaut **l'absence de note qu'une note qui n'apporte rien**.

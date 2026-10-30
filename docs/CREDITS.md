@@ -3,7 +3,7 @@
 ## Core Developer
 * **Author**: Paul MURY
 * **Role**: Lead Developer and Project Creator
-* **Contact**: [https://github.com/murypaul](https://github.com/)
+* **Contact**: [https://github.com/murypaul](https://github.com/murypaul)
 * **Project Founded**: 2026
 
 
@@ -18,7 +18,7 @@ research projects.
 * [NumPy](https://numpy.org/)
     BSD License.
 * [Pillow](https://python-pillow.org/)
-    HPND License.
+    MIT-CMU License.
 * [Requests](https://github.com/psf/requests)
     Apache 2.0 License.
 * [Hugging Face Hub](https://huggingface.co/)
